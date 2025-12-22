@@ -117,6 +117,21 @@ This creates distributable packages for your current platform.
 
 ## Development
 
+### For Developers
+
+New developers should start with these documentation files:
+
+- **[DEVELOPER_SETUP.md](DEVELOPER_SETUP.md)** - Complete setup guide for new developers
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Quick commands and code snippets
+- **[detailed-development-plan.md](detailed-development-plan.md)** - Feature roadmap and technical details
+
+### Quick Start for Developers
+
+1. **Prerequisites**: Node.js 18+, Rust 1.70+, Python 3.8+
+2. **Install**: `npm install`
+3. **Development**: `npm run tauri:dev`
+4. **Build**: `npm run tauri:build`
+
 ### Project Structure
 ```
 pos-system/
@@ -124,7 +139,8 @@ pos-system/
 │   ├── components/         # React components
 │   │   ├── POSInterface.jsx
 │   │   ├── InventoryManager.jsx
-│   │   └── TransactionHistory.jsx
+│   │   ├── TransactionHistory.jsx
+│   │   └── auth/           # Authentication components
 │   ├── App.jsx            # Main app component
 │   └── main.jsx           # React entry point
 ├── src-tauri/             # Rust backend
@@ -134,7 +150,9 @@ pos-system/
 │   ├── Cargo.toml         # Rust dependencies
 │   └── tauri.conf.json    # Tauri configuration
 ├── package.json           # Node.js dependencies
-└── vite.config.js         # Vite configuration
+├── vite.config.js         # Vite configuration
+├── DEVELOPER_SETUP.md     # Developer setup guide
+└── QUICK_REFERENCE.md     # Quick reference for commands
 ```
 
 ### Available Scripts
@@ -150,6 +168,8 @@ pos-system/
 1. **Frontend Components**: Add new React components in `src/components/`
 2. **Backend Commands**: Add new Tauri commands in `src-tauri/src/main.rs`
 3. **Database Operations**: Extend database functions in `src-tauri/src/database.rs`
+
+Refer to [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md) for detailed development guidelines.
 
 ## Troubleshooting
 
