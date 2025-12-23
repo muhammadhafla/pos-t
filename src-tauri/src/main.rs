@@ -1,11 +1,11 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{Manager, State};
+use tauri::State;
 use std::sync::{Arc, Mutex};
 use rusqlite::{Connection, Result, params};
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use uuid::Uuid;
 
 // Database state
@@ -125,6 +125,7 @@ struct CashMovementInput {
 }
 
 // Shift report data structure
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 struct ShiftReport {
     id: String,
@@ -202,7 +203,7 @@ fn init_database() -> Result<Connection> {
             id TEXT PRIMARY KEY,
             shift_id TEXT NOT NULL,
             transaction_id TEXT,
-            type TEXT NOT NULL,
+            movement_type TEXT NOT NULL,
             amount REAL NOT NULL,
             reason TEXT,
             timestamp TEXT NOT NULL,
@@ -260,7 +261,7 @@ fn initialize_default_data(conn: &Connection) -> Result<()> {
         // Insert default admin user
         let admin_id = Uuid::new_v4().to_string();
         let admin_password = "admin123"; // In production, this should be properly hashed
-        let password_hash = bcrypt::hash(admin_password, 10).unwrap_or_default();
+        let password_hash = bcrypt::hash(admin_password, 10).unwrap_or_else(|_| "".to_string());
         
         conn.execute(
             "INSERT INTO users (id, username, password_hash, full_name, role, is_active, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -270,7 +271,7 @@ fn initialize_default_data(conn: &Connection) -> Result<()> {
         // Insert default cashier
         let cashier_id = Uuid::new_v4().to_string();
         let cashier_password = "kasir123";
-        let cashier_password_hash = bcrypt::hash(cashier_password, 10).unwrap_or_default();
+        let cashier_password_hash = bcrypt::hash(cashier_password, 10).unwrap_or_else(|_| "".to_string());
         
         conn.execute(
             "INSERT INTO users (id, username, password_hash, full_name, role, is_active, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -501,23 +502,28 @@ fn authenticate_user(login_data: LoginData, db: State<Database>) -> Result<Optio
     let mut stmt = conn.prepare("SELECT id, username, password_hash, full_name, role, is_active, created_at, last_login FROM users WHERE username = ?1").map_err(|e| e.to_string())?;
     
     match stmt.query_row(params![login_data.username], |row| {
+        let id: String = row.get(0)?;
+        let username: String = row.get(1)?;
+        let password_hash: String = row.get(2)?;
+        let full_name: String = row.get(3)?;
+        let role: String = row.get(4)?;
+        let is_active: bool = row.get(5)?;
+        let created_at: String = row.get(6)?;
+        let last_login: Option<String> = row.get(7)?;
+        
         let user = User {
-            id: row.get(0)?,
-            username: row.get(1)?,
-            full_name: row.get(3)?,
-            role: row.get(4)?,
-            is_active: row.get(5)?,
-            created_at: row.get(6)?,
-            last_login: row.get(7)?,
+            id,
+            username,
+            full_name,
+            role,
+            is_active,
+            created_at,
+            last_login,
         };
-        let stored_hash: String = row.get(2)?;
         
         // Verify password and return result
-        if bcrypt::verify(&login_data.password, &stored_hash).unwrap_or(false) && user.is_active {
-            Ok((user, true))
-        } else {
-            Ok((user, false))
-        }
+        let password_valid = bcrypt::verify(&login_data.password, &password_hash).unwrap_or(false) && is_active;
+        Ok((user, password_valid))
     }) {
         Ok((mut user, password_valid)) => {
             if password_valid {
@@ -575,7 +581,7 @@ fn open_cash_shift(user_id: String, initial_cash: f64, db: State<Database>) -> R
         |row| row.get(0)
     ).ok();
     
-    if let Some(shift_id) = existing_shift {
+    if let Some(_shift_id) = existing_shift {
         return Err("User already has an open shift".to_string());
     }
     
@@ -597,7 +603,7 @@ fn open_cash_shift(user_id: String, initial_cash: f64, db: State<Database>) -> R
     // Add initial cash movement
     let movement_id = Uuid::new_v4().to_string();
     conn.execute(
-        "INSERT INTO cash_movements (id, shift_id, type, amount, reason, timestamp, user_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO cash_movements (id, shift_id, movement_type, amount, reason, timestamp, user_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![movement_id, shift_id, "cash_in", initial_cash, "Opening cash", start_time, user_id]
     ).map_err(|e| e.to_string())?;
     
@@ -648,7 +654,7 @@ fn add_cash_movement(movement_input: CashMovementInput, user_id: String, db: Sta
     let timestamp = Utc::now().to_rfc3339();
     
     conn.execute(
-        "INSERT INTO cash_movements (id, shift_id, type, amount, reason, timestamp, user_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO cash_movements (id, shift_id, movement_type, amount, reason, timestamp, user_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![movement_id, movement_input.shift_id, movement_input.movement_type, movement_input.amount, movement_input.reason, timestamp, user_id]
     ).map_err(|e| e.to_string())?;
     
@@ -673,7 +679,7 @@ fn add_cash_movement(movement_input: CashMovementInput, user_id: String, db: Sta
 fn get_cash_movements(shift_id: String, db: State<Database>) -> Result<Vec<CashMovement>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare("
-        SELECT cm.id, cm.shift_id, cm.transaction_id, cm.type, cm.amount, cm.reason, cm.timestamp, cm.user_id, u.full_name
+        SELECT cm.id, cm.shift_id, cm.transaction_id, cm.movement_type, cm.amount, cm.reason, cm.timestamp, cm.user_id, u.full_name
         FROM cash_movements cm
         JOIN users u ON cm.user_id = u.id
         WHERE cm.shift_id = ?1
@@ -773,6 +779,210 @@ fn print_receipt(transaction: Transaction, store_name: String, store_address: St
     Ok(())
 }
 
+// Shift Report Data Structure
+#[derive(Debug, Serialize, Deserialize)]
+struct ShiftReportData {
+    shift_info: serde_json::Value,
+    cash_summary: serde_json::Value,
+    movements: Vec<serde_json::Value>,
+    transactions: Vec<serde_json::Value>,
+}
+
+#[tauri::command]
+fn generate_shift_report(shift_id: String, user_id: String, db: State<Database>) -> Result<ShiftReport, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    
+    // Get shift info
+    let shift_info: serde_json::Value = conn.query_row(
+        "SELECT cs.*, u.full_name as user_name, cr.name as register_name
+         FROM cash_shifts cs
+         JOIN users u ON cs.user_id = u.id
+         JOIN cash_registers cr ON cs.cash_register_id = cr.id
+         WHERE cs.id = ?1",
+        params![shift_id],
+        |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "user_id": row.get::<_, String>(1)?,
+                "user_name": row.get::<_, String>(14)?,
+                "cash_register_id": row.get::<_, String>(3)?,
+                "register_name": row.get::<_, String>(15)?,
+                "start_time": row.get::<_, String>(4)?,
+                "end_time": row.get::<_, Option<String>>(5)?,
+                "initial_cash": row.get::<_, f64>(6)?,
+                "expected_cash": row.get::<_, f64>(7)?,
+                "actual_cash": row.get::<_, Option<f64>>(8)?,
+                "difference": row.get::<_, Option<f64>>(9)?,
+                "status": row.get::<_, String>(10)?,
+                "notes": row.get::<_, Option<String>>(11)?,
+            }))
+        }
+    ).map_err(|e| e.to_string())?;
+    
+    // Get cash movements
+    let movements: Vec<serde_json::Value> = conn.prepare(
+        "SELECT cm.*, u.full_name as user_name
+         FROM cash_movements cm
+         JOIN users u ON cm.user_id = u.id
+         WHERE cm.shift_id = ?1
+         ORDER BY cm.timestamp DESC"
+    ).map_err(|e| e.to_string())?
+    .query_map(params![shift_id], |row| {
+        Ok(serde_json::json!({
+            "id": row.get::<_, String>(0)?,
+            "shift_id": row.get::<_, String>(1)?,
+            "transaction_id": row.get::<_, Option<String>>(2)?,
+            "movement_type": row.get::<_, String>(3)?,
+            "amount": row.get::<_, f64>(4)?,
+            "reason": row.get::<_, Option<String>>(5)?,
+            "timestamp": row.get::<_, String>(6)?,
+            "user_id": row.get::<_, String>(7)?,
+            "user_name": row.get::<_, String>(8)?,
+        }))
+    }).map_err(|e| e.to_string())?
+    .filter_map(|m| m.ok())
+    .collect();
+    
+    // Calculate cash summary
+    let total_cash_in: f64 = movements.iter()
+        .filter(|m| m["movement_type"] == "cash_in" || m["movement_type"] == "sale")
+        .map(|m| m["amount"].as_f64().unwrap_or(0.0))
+        .sum();
+    
+    let total_cash_out: f64 = movements.iter()
+        .filter(|m| m["movement_type"] == "cash_out" || m["movement_type"] == "adjustment")
+        .map(|m| m["amount"].as_f64().unwrap_or(0.0))
+        .sum();
+    
+    let cash_summary = serde_json::json!({
+        "total_cash_in": total_cash_in,
+        "total_cash_out": total_cash_out,
+        "net_movement": total_cash_in - total_cash_out,
+        "initial_cash": shift_info["initial_cash"],
+        "expected_cash": shift_info["expected_cash"],
+        "actual_cash": shift_info["actual_cash"],
+        "difference": shift_info["difference"],
+    });
+    
+    // Get transactions for this shift (based on cash movements with transaction_id)
+    let transaction_ids: Vec<String> = movements.iter()
+        .filter_map(|m| m.get("transaction_id").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .filter(|id| !id.is_empty())
+        .collect();
+    
+    let mut transactions_data: Vec<serde_json::Value> = Vec::new();
+    
+    for tx_id in &transaction_ids {
+        match conn.query_row(
+            "SELECT t.id, t.total, t.timestamp, t.payment_method, GROUP_CONCAT(ti.name || ' x' || ti.quantity, ', ') as items
+             FROM transactions t
+             LEFT JOIN transaction_items ti ON t.id = ti.transaction_id
+             WHERE t.id = ?1
+             GROUP BY t.id",
+            params![tx_id.as_str()],
+            |row| {
+                Ok(serde_json::json!({
+                    "id": row.get::<_, String>(0)?,
+                    "total": row.get::<_, f64>(1)?,
+                    "timestamp": row.get::<_, String>(2)?,
+                    "payment_method": row.get::<_, String>(3)?,
+                    "items": row.get::<_, Option<String>>(4)?,
+                }))
+            }
+        ) {
+            Ok(t) => transactions_data.push(t),
+            Err(rusqlite::Error::QueryReturnedNoRows) => {},
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    
+    let report_data = ShiftReportData {
+        shift_info,
+        cash_summary,
+        movements,
+        transactions: transactions_data,
+    };
+    
+    let report = ShiftReport {
+        id: Uuid::new_v4().to_string(),
+        shift_id,
+        report_type: "daily".to_string(),
+        data: serde_json::to_value(report_data).map_err(|e| e.to_string())?,
+        pdf_path: None,
+        generated_at: Utc::now().to_rfc3339(),
+        generated_by: user_id,
+    };
+    
+    Ok(report)
+}
+
+#[tauri::command]
+fn save_shift_report(report: ShiftReport, db: State<Database>) -> Result<String, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    
+    let data_json = serde_json::to_string(&report.data).map_err(|e| e.to_string())?;
+    
+    conn.execute(
+        "INSERT INTO shift_reports (id, shift_id, report_type, data, pdf_path, generated_at, generated_by) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![report.id, report.shift_id, report.report_type, data_json, report.pdf_path, report.generated_at, report.generated_by]
+    ).map_err(|e| e.to_string())?;
+    
+    Ok(report.id)
+}
+
+#[tauri::command]
+fn get_shift_reports(db: State<Database>) -> Result<Vec<ShiftReport>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id, shift_id, report_type, data, pdf_path, generated_at, generated_by FROM shift_reports ORDER BY generated_at DESC").map_err(|e| e.to_string())?;
+    
+    let report_iter = stmt.query_map([], |row| {
+        Ok(ShiftReport {
+            id: row.get(0)?,
+            shift_id: row.get(1)?,
+            report_type: row.get(2)?,
+            data: serde_json::from_str(row.get::<_, String>(3)?.as_str()).unwrap_or_default(),
+            pdf_path: row.get(4)?,
+            generated_at: row.get(5)?,
+            generated_by: row.get(6)?,
+        })
+    }).map_err(|e| e.to_string())?;
+    
+    let mut reports = Vec::new();
+    for report in report_iter {
+        reports.push(report.map_err(|e| e.to_string())?);
+    }
+    
+    Ok(reports)
+}
+
+#[tauri::command]
+fn close_cash_shift(shift_id: String, actual_cash: f64, user_id: String, notes: Option<String>, db: State<Database>) -> Result<String, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    
+    let end_time = Utc::now().to_rfc3339();
+    let expected_cash: f64 = conn.query_row(
+        "SELECT expected_cash FROM cash_shifts WHERE id = ?1",
+        params![shift_id],
+        |row| row.get::<_, f64>(0)
+    ).map_err(|e| e.to_string())?;
+    
+    let difference = actual_cash - expected_cash;
+    
+    conn.execute(
+        "UPDATE cash_shifts SET end_time = ?1, actual_cash = ?2, difference = ?3, status = 'closed', notes = ?4 WHERE id = ?5",
+        params![end_time, actual_cash, difference, notes, &shift_id]
+    ).map_err(|e| e.to_string())?;
+    
+    // Drop the connection before calling generate_shift_report to avoid borrow issues
+    drop(conn);
+    
+    // Generate and save shift report
+    let report = generate_shift_report(shift_id.clone(), user_id, db.clone())?;
+    save_shift_report(report, db)?;
+    
+    Ok(shift_id)
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(Database(Arc::new(Mutex::new(
@@ -794,7 +1004,12 @@ fn main() {
             add_cash_movement,
             get_cash_movements,
             get_receipt_templates,
-            get_printer_settings
+            get_printer_settings,
+            // Shift report commands
+            generate_shift_report,
+            save_shift_report,
+            get_shift_reports,
+            close_cash_shift
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

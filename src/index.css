@@ -1,69 +1,222 @@
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+@layer base {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    
+    /* Professional POS Color Palette */
+    --pos-primary: 221.2 83.2% 53.3%;      /* Primary Blue */
+    --pos-secondary: 142.1 76.2% 36.3%;    /* Success Green */
+    --pos-accent: 262.1 83.3% 57.8%;       /* Purple Accent */
+    --pos-warning: 38.3 92.6% 50.2%;       /* Orange Warning */
+    --pos-danger: 0 72.2% 50.6%;           /* Red Danger */
+    
+    /* Background Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--pos-primary)) 0%, hsl(var(--pos-accent)) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(var(--pos-secondary)) 0%, hsl(var(--pos-secondary)/0.8) 100%);
+    --gradient-surface: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)/30) 100%);
   }
-  a:hover {
-    color: #747bff;
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    
+    /* Dark mode POS Colors */
+    --pos-primary: 217.2 91.2% 59.8%;
+    --pos-secondary: 142.1 76.2% 46.3%;
+    --pos-accent: 262.1 83.3% 67.8%;
+    --pos-warning: 38.3 92.6% 60.2%;
+    --pos-danger: 0 72.2% 60.6%;
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom POS-specific styles */
+.pos-interface {
+  @apply h-screen flex flex-col font-sans overflow-hidden;
+}
+
+/* Theme utilities */
+.theme-toggle {
+  @apply bg-secondary border border-border text-secondary-foreground px-4 py-2 rounded-md cursor-pointer font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground;
+}
+
+.theme-toggle:hover {
+  @apply -translate-y-0.5;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  @apply w-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground;
+}
+
+/* Animation utilities */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease;
+}
+
+/* Focus styles */
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+}
+
+/* Custom button variants for POS */
+.btn-pos-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-3 px-6 rounded-lg transition-all duration-200;
+}
+
+.btn-pos-primary:hover {
+  @apply -translate-y-0.5 shadow-lg;
+}
+
+.btn-pos-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 font-semibold py-3 px-6 rounded-lg transition-all duration-200;
+}
+
+/* Payment modal specific styles */
+.payment-modal-content {
+  @apply bg-background border border-border shadow-xl rounded-xl p-6 max-w-md w-full mx-4;
+}
+
+.payment-total-display {
+  @apply text-center bg-primary/10 border-2 border-primary rounded-xl p-6 mb-6;
+}
+
+.payment-amount-large {
+  @apply text-4xl font-black text-primary;
+}
+
+/* Table styles */
+.cart-table {
+  @apply w-full border-collapse;
+}
+
+.cart-table th {
+  @apply bg-muted text-muted-foreground font-semibold p-4 text-left border-b border-border;
+}
+
+.cart-table td {
+  @apply p-4 border-b border-border;
+}
+
+.cart-table tbody tr:hover {
+  @apply bg-accent/50;
+}
+
+/* Search results dropdown */
+.search-results {
+  @apply absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto;
+}
+
+.search-result-item {
+  @apply p-4 hover:bg-accent cursor-pointer border-b border-border last:border-b-0 flex justify-between items-center;
+}
+
+/* Keyboard shortcuts hint */
+.keyboard-hints {
+  @apply text-xs text-muted-foreground font-mono mt-2;
+}
+
+/* Loading states */
+.loading-overlay {
+  @apply absolute inset-0 bg-background/80 flex items-center justify-center z-50;
+}
+
+.loading-spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-primary;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pos-interface {
+    @apply text-sm;
+  }
+  
+  .payment-total-display {
+    @apply p-4;
+  }
+  
+  .payment-amount-large {
+    @apply text-3xl;
   }
 }
